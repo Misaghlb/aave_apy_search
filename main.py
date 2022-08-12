@@ -158,7 +158,7 @@ with st.spinner('Updating Dashboard...'):
         activation_function = st.selectbox('Choose a Chain',
                                            ['Avalanche v2', 'Avalanche v3', 'Ethereum', 'Optimism', 'Fantom',
                                             'Arbitrum',
-                                            'Harmony', 'Polygon v2', 'Polygon v3'])
+                                            'Harmony', 'Polygon v3'])
         start_time = st.slider(
             "When do you start?",
             value=datetime.now() - timedelta(days=30), min_value=datetime(2019, 1, 1), max_value=datetime.now(),
@@ -220,3 +220,27 @@ with st.spinner('Updating Dashboard...'):
                 chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-arbitrum-extended',
                                         start_timestamp, end_timestamp)
                 generate_supply_charts(chart_data)
+
+
+
+# # end
+st.write('')
+st.write('')
+st.write('')
+st.write('')
+st.write('')
+st.write('')
+st.write('')
+st.write('')
+st.markdown("---")
+st.markdown("##### Contact:\n"
+            "- developed by Misagh lotfi \n"
+            "- https://twitter.com/misaghlb \n"
+            "- misaghlb@live.com\n"
+            "- https://www.linkedin.com/in/misagh-lotfi/\n"
+            )
+
+st.markdown("##### Sources:\n"
+            "- messari graph data for example this one for polygon: https://thegraph.com/hosted-service/subgraph/messari/aave-v2-polygon-extended \n"
+            "- code: https://github.com/Misaghlb/aave_apy_search \n"
+            )
