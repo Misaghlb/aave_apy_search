@@ -19,6 +19,12 @@ def clean_rate(rates: list, day: datetime, asset: str):
 
 
 # @st.cache(ttl=24 * 60 * 60)  # 6 hours
+def clean_symbol(symbol: str):
+    symbol = symbol.replace('Aave interest bearing ', '')
+    symbol = symbol.replace('Aave Avalanche Market ', '')
+    return symbol
+
+
 def fetch_data(url: str, timestamp_start, timestamp_end):
     first = 1000
     block_number = 0
@@ -54,7 +60,7 @@ def fetch_data(url: str, timestamp_start, timestamp_end):
 
     for item in raw_data:
         item['Day'] = datetime.fromtimestamp(int(item['timestamp'])).date()
-        item['Asset'] = item['market']['name']
+        item['Asset'] = clean_symbol(item['market']['name'])
         item['TVL'] = int(float(item['totalValueLockedUSD']))
         item['dailyDepositUSD'] = int(float(item['dailyDepositUSD']))
         item['dailyWithdrawUSD'] = int(float(item['dailyWithdrawUSD']))
@@ -97,7 +103,7 @@ def generate_supply_charts(list_data: list):
     # --------------------------
 
     c1, c2, c3 = st.columns(3)
-    # ------------ rates_stable_assets_one_month
+    # ------------ rates borrow stable assets
     rates_stable_assets = rates_data[rates_data['type'] == 'BORROWER-STABLE']
     rates_stable_assets = rates_stable_assets.groupby(["asset"], as_index=False).mean()
 
@@ -107,9 +113,10 @@ def generate_supply_charts(list_data: list):
     fig.update_traces(hovertemplate=None)
     fig.update_layout(hovermode="x unified")
     fig.update_layout(title_x=0, margin=dict(l=0, r=10, b=30, t=30), yaxis_title=None, xaxis_title=None)
+    fig.update_layout(xaxis={'categoryorder': 'total descending'})
     c1.plotly_chart(fig, use_container_width=True)
 
-    # ------------ rates_stable_assets_one_month
+    # ------------ rates borrow variable assets
     rates_var_assets = rates_data[rates_data['type'] == 'BORROWER-VARIABLE']
     rates_var_assets = rates_var_assets.groupby(["asset"], as_index=False).mean()
 
@@ -119,9 +126,10 @@ def generate_supply_charts(list_data: list):
     fig.update_traces(hovertemplate=None)
     fig.update_layout(hovermode="x unified")
     fig.update_layout(title_x=0, margin=dict(l=0, r=10, b=30, t=30), yaxis_title=None, xaxis_title=None)
+    fig.update_layout(xaxis={'categoryorder': 'total descending'})
     c2.plotly_chart(fig, use_container_width=True)
 
-    # ------------ rates_stable_assets_one_month
+    # ------------ rates_supply_assets
     rates_supply_assets = rates_data[rates_data['type'] == 'LENDER-VARIABLE']
     rates_supply_assets = rates_supply_assets.groupby(["asset"], as_index=False).mean()
 
@@ -130,6 +138,7 @@ def generate_supply_charts(list_data: list):
     fig.update_traces(hovertemplate=None)
     fig.update_layout(hovermode="x unified")
     fig.update_layout(title_x=0, margin=dict(l=0, r=10, b=30, t=30), yaxis_title=None, xaxis_title=None)
+    fig.update_layout(xaxis={'categoryorder': 'total descending'})
     c3.plotly_chart(fig, use_container_width=True)
     # -------------------------------------------------------------------------
 
@@ -152,6 +161,13 @@ def generate_supply_charts(list_data: list):
     # -------------------------------------------------------------------------
 
 
+if 'default_value' not in st.session_state:
+    st.session_state.default_value = datetime.now() - timedelta(days=30)
+if 'end_default_value' not in st.session_state:
+    st.session_state.end_default_value = datetime.now()
+if 'max_date' not in st.session_state:
+    st.session_state.max_date = datetime.now()
+
 with st.spinner('Updating Dashboard...'):
     with st.form("my_form"):
 
@@ -161,67 +177,67 @@ with st.spinner('Updating Dashboard...'):
                                             'Harmony', 'Polygon v3'])
         start_time = st.slider(
             "When do you start?",
-            value=datetime.now() - timedelta(days=30), min_value=datetime(2019, 1, 1), max_value=datetime.now(),
+            value=st.session_state.default_value, min_value=datetime(2019, 1, 1), max_value=st.session_state.max_date,
             format="yy/MM/DD")
         start_timestamp = int(start_time.timestamp())
 
         end_time = st.slider(
             "When do you End?",
-            value=datetime.now(), min_value=datetime(2019, 1, 1), max_value=datetime.now(),
+            value=st.session_state.end_default_value, min_value=datetime(2019, 1, 1), max_value=st.session_state.max_date,
             format="yy/MM/DD")
         end_timestamp = int(end_time.timestamp())
 
         submitted = st.form_submit_button("Submit")
 
-        if submitted:
+    if submitted:
+        st.session_state.default_value = start_time
+        st.session_state.end_default_value = end_time
 
-            if activation_function == 'Avalanche v2':
-                chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v2-avalanche-extended',
-                                        start_timestamp, end_timestamp)
-                generate_supply_charts(chart_data)
+        if activation_function == 'Avalanche v2':
+            chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v2-avalanche-extended',
+                                    start_timestamp, end_timestamp)
+            generate_supply_charts(chart_data)
 
-            if activation_function == 'Avalanche v3':
-                chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-avalanche',
-                                        start_timestamp, end_timestamp)
-                generate_supply_charts(chart_data)
+        if activation_function == 'Avalanche v3':
+            chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-avalanche',
+                                    start_timestamp, end_timestamp)
+            generate_supply_charts(chart_data)
 
-            if activation_function == 'Ethereum':
-                chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v2-ethereum-extended',
-                                        start_timestamp, end_timestamp)
-                generate_supply_charts(chart_data)
+        if activation_function == 'Ethereum':
+            chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v2-ethereum-extended',
+                                    start_timestamp, end_timestamp)
+            generate_supply_charts(chart_data)
 
-            if activation_function == 'Optimism':
-                chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-optimism-extended',
-                                        start_timestamp, end_timestamp)
-                generate_supply_charts(chart_data)
+        if activation_function == 'Optimism':
+            chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-optimism-extended',
+                                    start_timestamp, end_timestamp)
+            generate_supply_charts(chart_data)
 
-            if activation_function == 'Polygon v3':
-                chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-polygon-extended',
-                                        start_timestamp, end_timestamp)
-                generate_supply_charts(chart_data)
+        if activation_function == 'Polygon v3':
+            chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-polygon-extended',
+                                    start_timestamp, end_timestamp)
+            generate_supply_charts(chart_data)
 
-            if activation_function == 'Polygon v2':
-                st.warning('The database is in the process of updating and has not been fully backfilled')
-                chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v2-polygon-extended',
-                                        start_timestamp, end_timestamp)
-                generate_supply_charts(chart_data)
+        if activation_function == 'Polygon v2':
+            st.warning('The database is in the process of updating and has not been fully backfilled')
+            chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v2-polygon-extended',
+                                    start_timestamp, end_timestamp)
+            generate_supply_charts(chart_data)
 
-            if activation_function == 'Harmony':
-                chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-harmony-extended',
-                                        start_timestamp, end_timestamp)
-                generate_supply_charts(chart_data)
+        if activation_function == 'Harmony':
+            chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-harmony-extended',
+                                    start_timestamp, end_timestamp)
+            generate_supply_charts(chart_data)
 
-            if activation_function == 'Fantom':
-                chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-fantom-extended',
-                                        start_timestamp, end_timestamp)
-                generate_supply_charts(chart_data)
+        if activation_function == 'Fantom':
+            chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-fantom-extended',
+                                    start_timestamp, end_timestamp)
+            generate_supply_charts(chart_data)
 
-            if activation_function == 'Arbitrum':
-                chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-arbitrum-extended',
-                                        start_timestamp, end_timestamp)
-                generate_supply_charts(chart_data)
-
-
+        if activation_function == 'Arbitrum':
+            chart_data = fetch_data('https://api.thegraph.com/subgraphs/name/messari/aave-v3-arbitrum-extended',
+                                    start_timestamp, end_timestamp)
+            generate_supply_charts(chart_data)
 
 # # end
 st.write('')
